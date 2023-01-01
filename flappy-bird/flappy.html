@@ -1,0 +1,441 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Flappy Bird - Liam Clark</title>
+  <style></style>
+</head>
+<body>
+  <h1>Flappy Bird - Liam Clark</h1>
+  <canvas id="canvas" width="288" height="512"></canvas>
+  <script>
+const cvs = document.getElementById('canvas');
+const ctx = cvs.getContext('2d');
+
+// load images
+const mainMenuLogo = new Image();
+const startButton = new Image();
+
+const getReadyLogo = new Image();
+
+const bird = new Image();
+const bg = new Image();
+const fg = new Image();
+const pauseButton = new Image();
+const pipeNorth = new Image();
+const pipeSouth = new Image();
+
+const scoreSheet = new Image();
+const gameOverLogo = new Image();
+const menu = new Image();
+const restart = new Image();
+
+const bronzeMedal = new Image();
+const silverMedal = new Image();
+const goldMedal = new Image();
+const platinumMedal = new Image();
+
+const zero = new Image();
+const one = new Image();
+const two = new Image();
+const three = new Image();
+const four = new Image();
+const five = new Image();
+const six = new Image();
+const seven = new Image();
+const eight = new Image();
+const nine = new Image();
+
+mainMenuLogo.src = 'main-menu/main-menu-logo.png';
+startButton.src = 'main-menu/start-button.png';
+
+getReadyLogo.src = 'background/get-ready-logo.png';
+
+bird.src = 'characters/default.png';
+bg.src = 'background/day.png';
+fg.src = 'obstacles/floor.png';
+pauseButton.src = 'background/pause-button.png';
+pipeNorth.src = 'obstacles/pipe-north.png';
+pipeSouth.src = 'obstacles/pipe-south.png';
+
+scoreSheet.src = 'game-over-screen/score-sheet.png';
+gameOverLogo.src = 'game-over-screen/game-over-logo.png';
+menu.src = 'game-over-screen/menu-button.png';
+restart.src = 'game-over-screen/restart-button.png';
+
+bronzeMedal.src = 'medals/bronze-medal.png';
+silverMedal.src = 'medals/silver-medal.png';
+goldMedal.src = 'medals/gold-medal.png';
+platinumMedal.src = 'medals/platinum-medal.png';
+
+zero.src = 'numbers/zero.png';
+one.src = 'numbers/one.png';
+two.src = 'numbers/two.png';
+three.src = 'numbers/three.png';
+four.src = 'numbers/four.png';
+five.src = 'numbers/five.png';
+six.src = 'numbers/six.png';
+seven.src = 'numbers/seven.png';
+eight.src = 'numbers/eight.png';
+nine.src = 'numbers/nine.png';
+
+
+// define object for number images
+
+const numberImages = {
+  0 : zero,
+  1 : one,
+  2 : two,
+  3 : three,
+  4 : four,
+  5 : five,
+  6 : six,
+  7 : seven,
+  8 : eight,
+  9 : nine
+};
+
+// some variables
+
+let animate;
+
+const gap = 90;
+
+let bX = 10;
+let bY = 150;
+
+const gravity = 1.9;
+
+let score;
+if (!localStorage.getItem('score')) {
+  localStorage.setItem('score', 0); // only set to 0 once
+}
+
+ctx.font = 'bold 15px Verdana, serif';
+ctx.fillStyle = 'white';
+
+// audio files
+
+const fly = new Audio('audio/sfx_wing.wav');
+const scor = new Audio('audio/sfx_point.wav');
+const hit = new Audio('audio/sfx_hit.wav');
+
+// pipe coordinates
+
+let pipe = [];
+
+// apply background
+
+function changeBackground(time) {
+  time = new Date();
+  
+  if ((time.getHours() >= 6 && time.getHours() < 18)) {
+    bg.src = 'background/day.png';
+  } else {
+    bg.src = 'background/night.png';
+  }
+}
+
+// move up on key down (during game)
+
+function moveUp(e) {
+  if (e.code == 'Space') {
+    bY -= 45;
+    
+    fly.play();
+  }
+}
+
+// start game (when game over or main menu)
+
+function startGame(e) {
+  if (e.code == 'Space') {
+    pipe = [];
+
+    pipe[0] = {
+      x : cvs.width,
+      y : 0
+    };
+    
+    document.addEventListener('keydown', pause);
+    document.addEventListener('keydown', moveUp);
+    
+    document.removeEventListener('keydown', startGame);
+    
+    drawGame();
+  }
+}
+
+// go to menu (when not started)
+
+function mainMenu(e) {
+  if (e.code == 'KeyM') {
+    document.removeEventListener('keydown', resume);
+    document.removeEventListener('keydown', moveUp);
+    
+    drawMainMenu();
+    document.removeEventListener('keydown', mainMenu);
+  }
+}
+
+// pause during game
+
+function pause(e) {
+  if (e.code == 'KeyN') {
+    drawPause();
+    document.removeEventListener('keydown', pause);
+  }
+}
+
+// resume if paused
+
+function resume(e) {
+  if (e.code == 'Space') {
+    document.addEventListener('keydown', pause);
+    
+    drawGame();
+    document.removeEventListener('keydown', resume);
+  }
+}
+
+// display scores
+
+function displayScore(sX, sY) {
+  const numbers = score.toString().split('');
+  let count = 0;
+      
+  for (num of numbers) {
+    for (let i = 0; i < 10; i++) {
+      if (num == i) {
+        num = numberImages[i];
+        count++;
+        break;
+      }
+    }
+    
+    ctx.drawImage(num, sX, sY);
+    sX += num.width;
+  }
+}
+
+function displaySmallScores(sX, sY, width, height) {
+  const numbers = score.toString().split('');
+  
+  const bestNumbers = localStorage.getItem('score');
+  let bsX = sX;
+      
+  for (num of numbers) {
+    for (let i = 0; i < 10; i++) {
+      if (num == i) {
+        num = numberImages[i];
+        break;
+      }
+    }
+    
+    ctx.drawImage(num, sX, sY, width, height); // score
+    
+    sX += width;
+  }
+  
+  for (num of bestNumbers) {
+    for (let i = 0; i < 10; i++) {
+      if (num == i) {
+        num = numberImages[i];
+        break;
+      }
+    }
+    
+    ctx.drawImage(num, bsX, sY + 32.5, width, height); // BEST score
+  
+    bsX += width;
+  }
+}
+
+// draw images
+
+// main menu
+
+function drawMainMenu() {
+  ctx.drawImage(bg, 0, 0);
+  
+  ctx.drawImage(fg, 0, cvs.height - fg.height);
+
+  ctx.drawImage(mainMenuLogo, (cvs.width / 2) - (mainMenuLogo. width / 2), cvs.height / 4);
+  
+  ctx.drawImage(bird, (cvs.width / 2) - (32.3 / 2), (cvs.height / 4) + (mainMenuLogo.height * 2), 32.3, 22.8);
+  
+  ctx.drawImage(startButton, (cvs.width / 2) - ((startButton.width * 1.25) / 2), (cvs.height / 4) + (mainMenuLogo.height * 2) + (32.2 * 2), startButton.width * 1.25, startButton.height * 1.25);
+  ctx.fillText('Press K to Start',  (cvs.width / 2) - 65, (cvs.height / 4) + (mainMenuLogo.height * 2) + (32.2 * 2) + (startButton.height * 1.25) * 1.6);
+  
+  document.addEventListener('keydown', getReady);
+}
+
+// get ready to play (intermediary)
+
+function getReady(e) {
+  if (e.code == 'KeyK') {
+    score = 0;
+      
+    bX = 10;
+    bY = 150;
+    
+    ctx.drawImage(bg, 0, 0);
+    
+    ctx.drawImage(getReadyLogo, (cvs.width / 2) - (getReadyLogo.width / 2), cvs.height / 6);
+    ctx.fillText('Press Space to Fly', (cvs.width / 2) - (getReadyLogo.width / 2) - 9, cvs.height / 3.5);
+    
+    ctx.drawImage(fg, 0, cvs.height - fg.height);
+        
+    ctx.drawImage(bird, bX, bY, 32.3, 22.8);
+        
+    displayScore(10, cvs.height - 40);
+    
+    document.addEventListener('keydown', startGame);
+    
+    document.removeEventListener('keydown', getReady);
+  }
+}
+
+// pause menu
+
+function drawPause() {
+  cancelAnimationFrame(animate);
+  
+  document.addEventListener('keydown', mainMenu);
+  document.addEventListener('keydown', resume);
+  
+  drawScore();
+  
+  ctx.fillText('Space', (cvs.width - 96) / 2 + menu.width + 10, (cvs.height / 4) + gameOverLogo.height + scoreSheet.height + 20 + (restart.height * 1.6));
+}
+
+// draw the actual game
+
+function drawGame() {
+  const constant = pipeNorth.height + gap;  // constant has to be declared in function because pipeNorth.height is not defined yet before
+  
+  changeBackground();
+  ctx.drawImage(bg, 0, 0);
+  
+  for (let i = 0; i < pipe.length; i++) {
+    ctx.drawImage(pipeNorth, pipe[i].x, pipe[i].y);
+    ctx.drawImage(pipeSouth, pipe[i].x, pipe[i].y + constant);
+    
+    pipe[i].x--;
+    
+    if (pipe[i].x == 110) {
+      pipe.push({
+        x : cvs.width,
+        y : Math.floor(Math.random() * pipeNorth.height) - pipeNorth.height
+      });
+    }
+  
+    // detect collision
+    
+    if (bX + 32.3 >= pipe[i].x && bX <= pipe[i].x + pipeNorth.width && (bY <= pipe[i].y + pipeNorth.height || bY + 22.8 >= pipe[i].y + constant) || bY + 22.8 >= cvs.height - fg.height) {
+      
+      hit.play();
+      
+      // finish drawing everything if lost
+      
+      if (pipe.length > 1) {
+        i++;
+        ctx.drawImage(pipeNorth, pipe[i].x, pipe[i].y);
+        ctx.drawImage(pipeSouth, pipe[i].x, pipe[i].y + constant);
+      }
+      
+      ctx.drawImage(fg, 0, cvs.height - fg.height);
+      
+      ctx.drawImage(bird, bX, bY, 32.3, 22.8);
+      
+      displayScore(10, cvs.height - 40);
+      
+      // switch to game over screen
+      
+      drawGameOver();
+      return;
+    }
+    
+    // draw pause
+    
+    ctx.fillText('N', 14, 48);
+    ctx.drawImage(pauseButton, 10, 10);
+    
+    // add score
+    
+    if (pipe[i].x == 5) {
+      score++;
+      
+      // if score is greater than previous score, add to local
+      
+      if (score > JSON.parse(localStorage.getItem('score'))) {
+        localStorage.setItem('score', JSON.stringify(score));
+      }
+      
+      // play audio
+      
+      scor.play();
+    }
+  }
+  
+  ctx.drawImage(fg, 0, cvs.height - fg.height);
+  
+  if (bY < 0) {
+    bY = 0; // height limit
+  } else {
+    ctx.drawImage(bird, bX, bY, 32.3, 22.8);
+  }
+    
+  bY += gravity;
+  
+  displayScore(10, cvs.height - 40);
+  
+  animate = requestAnimationFrame(drawGame);
+}
+
+// game over menu
+
+function drawGameOver() {
+  document.addEventListener('keydown', getReady);
+  document.addEventListener('keydown', mainMenu);
+  document.removeEventListener('keydown', moveUp);
+  document.removeEventListener('keydown', pause);
+  
+  ctx.drawImage(gameOverLogo, (cvs.width / 2) - (gameOverLogo.width / 2), cvs.height / 4);
+  
+  drawScore();
+  
+  ctx.fillText('K', (cvs.width - 96) / 2 + menu.width + 30, (cvs.height / 4) + gameOverLogo.height + scoreSheet.height + 20 + (restart.height * 1.6));
+}
+
+function drawScore() {
+  ctx.drawImage(scoreSheet, 56.5, (cvs.height / 4) + gameOverLogo.height + 15);
+  
+  // menu button and key
+  
+  ctx.drawImage(menu, (cvs.width - 126) / 2, (cvs.height / 4) + gameOverLogo.height + scoreSheet.height + 20);
+  ctx.fillText('M', (cvs.width - 126) / 2 + (menu.width / 2) - 5, (cvs.height / 4) + gameOverLogo.height + scoreSheet.height + 20 + (menu.height * 1.6));
+  
+  // restart button
+  
+  ctx.drawImage(restart, (cvs.width - 126) / 2 + menu.width + 40, (cvs.height / 4) + gameOverLogo.height + scoreSheet.height + 20);
+  
+  // show score
+  
+  displaySmallScores(188, (cvs.height / 4) + gameOverLogo.height + 15 + (scoreSheet.height / 4) + 2.5, 10, 15);
+  
+  if (score >= 10 && score < 20) {
+    ctx.drawImage(bronzeMedal, 56.5 + 20, (cvs.height / 4) + gameOverLogo.height + 15 + (scoreSheet.height / 2) - (bronzeMedal.height / 3) - 1);
+  } else if (score >= 20 && score < 30) {
+    ctx.drawImage(silverMedal, 56.5 + 20, (cvs.height / 4) + gameOverLogo.height + 15 + (scoreSheet.height / 2) - (silverMedal.height / 3) - 1);
+  } else if (score >= 30 && score < 40) {
+    ctx.drawImage(goldMedal, 56.5 + 20, (cvs.height / 4) + gameOverLogo.height + 15 + (scoreSheet.height / 2) - (goldMedal.height / 3) - 1);
+  } else if (score >= 40) {
+    ctx.drawImage(platinumMedal, 56.5 + 20, (cvs.height / 4) + gameOverLogo.height + 15 + (scoreSheet.height / 2) - (platinumMedal.height / 3) - 1);
+  }
+}
+
+window.addEventListener('load', drawMainMenu);
+  </script>
+</body>
+</html>
